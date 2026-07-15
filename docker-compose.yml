@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  my-android-phone:
+    build: .
+    container_name: custom-android-browser
+    privileged: true
+    devices:
+      - /dev/kvm
+    ports:
+      - "6080:6080"  # Web Browser Port
+      - "5555:5555"  # ADB Access Port
+    restart: unless-stopped
