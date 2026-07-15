@@ -4,7 +4,7 @@ FROM ubuntu:22.04
 # Prevent interactive installer prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Install system dependencies (REMOVE Ubuntu's built-in sdkmanager package to prevent conflicts)
+# 1. Install system dependencies (Ensuring Java 17 is explicitly installed)
 RUN apt-get update && apt-get install -y \
     openjdk-17-jdk \
     wget \
@@ -22,9 +22,10 @@ RUN apt-get update && apt-get install -y \
     fluxbox \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Set up environmental variables for Android (Forces path to local tools)
+# 2. Set up environmental variables for Android & Java
 ENV ANDROID_HOME=/opt/android-sdk
-ENV PATH=${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH=${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator:${JAVA_HOME}/bin
 
 # 3. Download and unpack Android Command Line Tools (Google Official)
 WORKDIR /opt
@@ -35,14 +36,14 @@ RUN mkdir -p ${ANDROID_HOME}/cmdline-tools && \
     rm cmdline.zip
 
 # 4. Accept Android SDK Licenses & install system components
-# FIX: Created an empty repository config directory first, then accepted licenses before running installations.
+# FIX: Explicitly pass the --sdk_root flag to force sdkmanager to locate its directory
 RUN mkdir -p /root/.android && touch /root/.android/repositories.cfg && \
-    yes | sdkmanager --licenses && \
-    sdkmanager --update && \
-    sdkmanager "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;x86_64"
+    yes | sdkmanager --sdk_root=${ANDROID_HOME} --licenses && \
+    sdkmanager --sdk_root=${ANDROID_HOME} --update && \
+    sdkmanager --sdk_root=${ANDROID_HOME} "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;x86_64"
 
-# 5. Create the Virtual Device (AVD)
-RUN echo "no" | avdmanager create avd \
+# 5. Create the Virtual Device (AVD) using explicit SDK paths
+RUN echo "no" | avdmanager --sdk_root=${ANDROID_HOME} create avd \
     --name MyCloudPhone \
     --package "system-images;android-33;google_apis;x86_64" \
     --device "pixel_6"
