@@ -4,10 +4,9 @@ FROM ubuntu:22.04
 # Prevent interactive installer prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Install system dependencies (Java, QEMU/KVM, NoVNC web viewer components)
+# 1. Install system dependencies (REMOVE Ubuntu's built-in sdkmanager package to prevent conflicts)
 RUN apt-get update && apt-get install -y \
     openjdk-17-jdk \
-    sdkmanager \
     wget \
     unzip \
     cpu-checker \
@@ -23,11 +22,11 @@ RUN apt-get update && apt-get install -y \
     fluxbox \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Set up environmental variables for Android
+# 2. Set up environmental variables for Android (Forces path to local tools)
 ENV ANDROID_HOME=/opt/android-sdk
 ENV PATH=${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator
 
-# 3. Download and unpack Android Command Line Tools
+# 3. Download and unpack Android Command Line Tools (Google Official)
 WORKDIR /opt
 RUN mkdir -p ${ANDROID_HOME}/cmdline-tools && \
     wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline.zip && \
@@ -35,8 +34,11 @@ RUN mkdir -p ${ANDROID_HOME}/cmdline-tools && \
     mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest && \
     rm cmdline.zip
 
-# 4. Accept Android SDK Licenses & install system components (Android 13 / API 33)
-RUN yes | sdkmanager --licenses && \
+# 4. Accept Android SDK Licenses & install system components
+# FIX: Created an empty repository config directory first, then accepted licenses before running installations.
+RUN mkdir -p /root/.android && touch /root/.android/repositories.cfg && \
+    yes | sdkmanager --licenses && \
+    sdkmanager --update && \
     sdkmanager "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;x86_64"
 
 # 5. Create the Virtual Device (AVD)
